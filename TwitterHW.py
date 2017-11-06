@@ -42,12 +42,13 @@ except:
 # Here, define a function called get_tweets that searches for all tweets referring to or by "umsi"
 # Your function must cache data it retrieves and rely on a cache file!
 def get_tweets():
-    CACHE_DICTION = {}
     tweets = "umsi"
+    #if data in cache
     if tweets in CACHE_DICTION:
         results = CACHE_DICTION[tweets]
+    #if data not in cache, fetch from web
     else:
-        results = api.user_timeline(tweets)
+        results = api.search(q = tweets)
         CACHE_DICTION[tweets] = results
         dumped_json_cache = json.dumps(CACHE_DICTION)
         fw = open(CACHE_FNAME,"w")
@@ -74,22 +75,20 @@ cur = conn.cursor()
 cur.execute('DROP TABLE IF EXISTS Tweets')
 
 cur.execute('''
-CREATE TABLE Tweets (tweet_id TEXT, author TEXT, time_posted TIMESTAMP, tweet_text TEXT, retweets INTEGER)''')
+CREATE TABLE Tweets (tweet_id INTEGER, author TEXT, time_posted TIMESTAMP, tweet_text TEXT, retweets INTEGER)''')
 
 # 3 - Invoke the function you defined above to get a list that represents a bunch of tweets from the UMSI timeline. Save those tweets in a variable called umsi_tweets.
-umsi_tweets = []
 umsi_tweets = get_tweets()
-
 # 4 - Use a for loop, the cursor you defined above to execute INSERT statements, that insert the data from each of the tweets in umsi_tweets into the correct columns in each row of the Tweets database table.
-for tweet in umsi_tweets:
-    userid = tweet['id_str']
-    screenname = tweet['user']['screen_name']
+
+for tweet in umsi_tweets["statuses"]: #iterates through each tweet object
+    userid = tweet['id']
+    screenname = tweet['user']['screen_name'] #indexes to find the author of the tweet
     createdat = tweet['created_at']
     tweettext = tweet['text']
     rtcount = tweet['retweet_count']
-    # tup = tw['id'], tw['user']['screen_name'], tw['created_at'], tw['text'], tw['retweet_count']
     cur.execute('''INSERT INTO Tweets (tweet_id, author, time_posted, tweet_text, retweets)
-    VALUES (?, ?, ?, ?, ?)''', (userid, screenname, createdat, tweettext, rtcount,))
+    VALUES (?, ?, ?, ?, ?)''', (userid, screenname, createdat, tweettext, rtcount,)) #SQL statement formatting each tweet into the 'Tweets' table
 #  5- Use the database connection to commit the changes to the database
 conn.commit()
 
@@ -103,14 +102,12 @@ conn.commit()
     # take in the view while running from place to place @umichDLHS  @umich…
 # Include the blank line between each tweet.
 dates = cur.execute("SELECT * FROM Tweets")
-row = cur.fetchone()
 for row in dates:
     print(str(row[2]), "-", row[3], "\n")
 # Select the author of all of the tweets (the full rows/tuples of information) that have been retweeted MORE
 # than 2 times, and fetch them into the variable more_than_2_rts.
 # Print the results
 dates = cur.execute("SELECT * FROM Tweets")
-row = cur.fetchone()
 more_than_2_rts = []
 for row in dates:
     if row[4] > 2:
